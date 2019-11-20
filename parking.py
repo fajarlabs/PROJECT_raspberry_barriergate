@@ -121,6 +121,4 @@ while True:
 			gpio.output(PIN_OUT1, 1)
 			time.sleep(0.3)
 			gpio.output(PIN_OUT1, 0)
-
-
-    time.sleep(0.2)
+	time.sleep(0.2)
