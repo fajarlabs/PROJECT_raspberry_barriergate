@@ -10,11 +10,13 @@ from evdev import InputDevice, categorize, ecodes  # import * is evil :)
 Define Thermal USB 
 View info : sudo lsusb -vvv -d 0483:5840
 """
-ID_VENDOR = 0x0483
-ID_PRODUCT = 0x5840
+#ID_VENDOR = 0x0483
+#ID_PRODUCT = 0x5840
+ID_VENDOR = 0x0fe6
+ID_PRODUCT = 0x811e
 TIMEOUT = 0
 EP_1_IN = 0x81
-EP_1_OUT = 0x03
+EP_1_OUT = 0x01
 
 """
 Remove warning
@@ -100,25 +102,36 @@ def cctv_capture():
 track = 0
 while True:
 	if (gpio.input(PIN_IN1) == False):
+		print("PENCET")
 		if (track < 1) :
 			print_thermal('KARCIS PARKIR', 'MALL EPICENTRUM', 'Gedung Epicentrum Kuningan', 'Tanggal : 11/20/2019    12:39', '12345', 'Gate 1')
 			play_sound()
 			track += 1
+			print("add track")
+	else :
 		if (track > 0):
 			# waiting vld sensor
 			track_vld = 0
 			while True :
 				if (gpio.input(PIN_IN2) == False):
 					if(track_vld < 1):
+						print("step 1")
 						track_vld += 1
 				else :
-					if(track_vld > 0):
+					if((track_vld > 0) and (track_vld < 2)):
+						print("muter "+str(track_vld))
+						print("step 2")
 						track_vld += 1
-				if(track_vld > 1):
-					break
-			track = 0 # reset track
-			time.sleep(0.5)
-			gpio.output(PIN_OUT1, 1)
-			time.sleep(0.3)
-			gpio.output(PIN_OUT1, 0)
+						if(track_vld > 1):
+							print("close step")
+							rack = 0 # reset track
+							time.sleep(0.3)
+							gpio.output(PIN_OUT1, 1)
+							time.sleep(0.3)
+							gpio.output(PIN_OUT1, 0)
+							print("finish")
+							track = 0
+							break
+				print("loop datalam")
+				time.sleep(0.2)
 	time.sleep(0.2)
