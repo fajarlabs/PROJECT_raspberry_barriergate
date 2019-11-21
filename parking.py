@@ -1,22 +1,15 @@
 import RPi.GPIO as gpio
 import time
 import os
+import configparser
+import requests
 # thermal printer library
 from escpos.printer import Usb
 # HID barcode 1D & 2D scanner
 from evdev import InputDevice, categorize, ecodes  # import * is evil :)
 
-"""
-Define Thermal USB 
-View info : sudo lsusb -vvv -d 0483:5840
-"""
-#ID_VENDOR = 0x0483
-#ID_PRODUCT = 0x5840
-ID_VENDOR = 0x0fe6
-ID_PRODUCT = 0x811e
-TIMEOUT = 0
-EP_1_IN = 0x81
-EP_1_OUT = 0x01
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 """
 Remove warning
@@ -47,6 +40,16 @@ gpio.setup(PIN_IN1, gpio.IN) # print ticket
 gpio.setup(PIN_IN2, gpio.IN) # vld
 gpio.setup(PIN_IN3, gpio.IN)
 gpio.setup(PIN_IN4, gpio.IN)
+
+"""
+Define Thermal USB 
+View info : sudo lsusb -vvv -d 0483:5840
+"""
+ID_VENDOR = int(config['PRINTER']['vid'],0)
+ID_PRODUCT = int(config['PRINTER']['pid'],0)
+TIMEOUT = int(config['PRINTER']['timeout'],0)
+EP_1_IN = int(config['PRINTER']['ep1in'],0)
+EP_1_OUT =int(config['PRINTER']['ep1out'],0)
 
 """
 Print ticket
@@ -88,16 +91,30 @@ def play_sound():
 """
 Request capture
 """
-def cctv_capture():
-	result = False
-	try :
-		url = ""
-		os.system("curl " + url)
-		result = True
-	except Exception as e :
-		print(e)
+# def cctv_capture():
+# 	result = False
+# 	try :
+# 		url = ""
+# 		os.system("curl " + url)
+# 		result = True
+# 	except Exception as e :
+# 		print(e)
 
-	return result
+# 	return result
+
+# POST
+def get_tiket():
+	url = 'https://www.w3schools.com/python/demopage.php'
+	myobj = {'somekey': 'somevalue'}
+	x = requests.post(url, data = myobj)
+	print(x.text)
+
+# GET
+def camera_request():
+	url = 'https://www.w3schools.com/python/demopage.php'
+	PARAMS = {'address':location} 
+	x = requests.get(url, params  = PARAMS)
+	print(x.text)
 
 track = 0
 while True:

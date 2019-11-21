@@ -4,11 +4,11 @@ from escpos.printer import Usb
 Define Thermal USB 
 View info : sudo lsusb -vvv -d 0483:5840
 """
-ID_VENDOR = 0x0fe6
-ID_PRODUCT = 0x811e
+ID_VENDOR = 0x0483
+ID_PRODUCT = 0x5840
 TIMEOUT = 0
 EP_1_IN = 0x81
-EP_1_OUT = 0x01
+EP_1_OUT = 0x03
 
 p = Usb(ID_VENDOR,ID_PRODUCT,TIMEOUT,EP_1_IN,EP_1_OUT)
 p.set("CENTER", "B", "A", 2, 2)
