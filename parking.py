@@ -81,7 +81,7 @@ def play_sound():
 	result = False
 	try :
 		file = "/home/pi/raspberry_parking/sounds/welcome.mp3"
-		os.system("mpg123 " + file)
+		os.system("mpg123 " + file+ " &")
 		result = True
 	except Exception as e :
 		print(e)
@@ -119,12 +119,11 @@ def camera_request():
 track = 0
 while True:
 	if (gpio.input(PIN_IN1) == False):
-		print("PENCET")
+		print("1.) TEKAN TOMBOL TICKET")
 		if (track < 1) :
 			print_thermal('KARCIS PARKIR', 'MALL EPICENTRUM', 'Gedung Epicentrum Kuningan', 'Tanggal : 11/20/2019    12:39', '12345', 'Gate 1')
 			play_sound()
 			track += 1
-			print("add track")
 	else :
 		if (track > 0):
 			# waiting vld sensor
@@ -132,23 +131,20 @@ while True:
 			while True :
 				if (gpio.input(PIN_IN2) == False):
 					if(track_vld < 1):
-						print("step 1")
+						print("2.) MOTOR SEDANG DI ATAS VLD")
 						track_vld += 1
 				else :
 					if((track_vld > 0) and (track_vld < 2)):
-						print("muter "+str(track_vld))
-						print("step 2")
+						print("3.) MOTOR SUDAH LEWATI VLD")
 						track_vld += 1
 						if(track_vld > 1):
-							print("close step")
-							rack = 0 # reset track
+							print("4.) PROSES TUTUP PALANG PARKIR")
 							time.sleep(0.3)
 							gpio.output(PIN_OUT1, 1)
 							time.sleep(0.3)
 							gpio.output(PIN_OUT1, 0)
-							print("finish")
+							print("5.) TRANSAKSI BERAKHIR")
 							track = 0
 							break
-				print("loop datalam")
 				time.sleep(0.2)
 	time.sleep(0.2)
