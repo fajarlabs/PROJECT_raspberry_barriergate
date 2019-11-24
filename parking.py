@@ -10,6 +10,10 @@ import threading
 from escpos.printer import Usb
 # HID barcode 1D & 2D scanner
 from evdev import InputDevice, categorize, ecodes  # import * is evil :)
+# i2c lcd
+import lcddriver
+
+DISPLAY = lcddriver.lcd()
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read('config.ini')
@@ -75,6 +79,27 @@ time.sleep(0.3)
 gpio.output(PIN_OUT1, 1)
 time.sleep(0.3)
 gpio.output(PIN_OUT1, 0)
+
+"""
+LCD
+"""
+def show_lcd(message, valign):
+	try :
+		if(valign == "TOP"):
+			DISPLAY.lcd_display_string(message, 1)
+		if(valign == "BOTTOM"):
+			DISPLAY.lcd_display_string(message, 2)
+	except Exception as e :
+		print(e)
+
+"""
+CLEAR LCD
+"""
+def clear_lcd():
+	try :
+		DISPLAY.lcd_clear()
+	except Exception as e :
+		print(e)
 
 """
 RFID
@@ -221,6 +246,9 @@ while True:
 				t_play_sound = threading.Thread(target=play_sound, args=())
 				t_play_sound.start()
 				
+				# LCD
+				show_lcd("Selamat Datang!")
+
 				# THERMAL PRINTER
 				print_thermal(
 					'KARCIS PARKIR', 
@@ -256,8 +284,10 @@ while True:
 				rfid_json = send_card(rfid_data)
 				card_status = int(rfid_json["status"])
 				running_text = rfid_json["description"]
+				
 				# card success
 				if(card_status == 1):
+					
 					# PLAY SOUND
 					t_play_sound = threading.Thread(target=play_sound_rfid, args=())
 					t_play_sound.start()
@@ -273,6 +303,7 @@ while True:
 						)
 					)
 					t_capture.start()
+
 					track += 1
 					print("Kartu sukses")
 				else :
