@@ -20,7 +20,11 @@ CONFIG.read('config.ini')
 
 RFID = InputDevice(CONFIG['HARDWARE']["rfid"])
 GRAB_RFID = []
-GRAB_STATUS = [] # if length > 0 is finish reading card
+GRAB_RFID_STATUS = [] # if length > 0 is finish reading card
+
+QRID = InputDevice(CONFIG['HARDWARE']["qrid"])
+GRAB_QRID = []
+GRAB_QRID_STATUS = [] # if length > 0 is finish reading card
 
 # Provided as an example taken from my own keyboard attached to a Centos 6 box:
 SCANCODES = {
@@ -102,6 +106,42 @@ def clear_lcd():
 		print(e)
 
 """
+QRID
+"""
+def qrid_reader():
+	#setup vars
+	caps = False
+
+	#grab that shit
+	QRID.grab()
+
+	#loop
+	for event in QRID.read_loop():
+	    if event.type == ecodes.EV_KEY:
+	        data = categorize(event)  # Save the event temporarily to introspect it
+	        if data.scancode == 42:
+	            if data.keystate == 1:
+	                caps = True
+	            if data.keystate == 0:
+	                caps = False
+	        if data.keystate == 1:  # Down events only
+	            if caps:
+	                key_lookup = u'{}'.format(CAPSCODES.get(data.scancode)) or u'UNKNOWN:[{}]'.format(data.scancode)  # Lookup or return UNKNOWN:XX
+	            else:
+	                key_lookup = u'{}'.format(SCANCODES.get(data.scancode)) or u'UNKNOWN:[{}]'.format(data.scancode)  # Lookup or return UNKNOWN:XX
+	            if (data.scancode != 42) and (data.scancode != 28):
+	                GRAB_QRID.append(key_lookup)  # Print it all out!
+	            if(data.scancode == 28):
+	                GRAB_QRID_STATUS.append(1)
+	                #print("".join(GRAB_QRID))
+	                # empty array
+	                # del GRAB_QRID[:]
+
+# QRID READER
+t_qrid_reader = threading.Thread(target=qrid_reader, args=())
+t_qrid_reader.start()
+
+"""
 RFID
 """
 def rfid_reader():
@@ -128,7 +168,7 @@ def rfid_reader():
 	            if (data.scancode != 42) and (data.scancode != 28):
 	                GRAB_RFID.append(key_lookup)  # Print it all out!
 	            if(data.scancode == 28):
-	                GRAB_STATUS.append(1)
+	                GRAB_RFID_STATUS.append(1)
 	                #print("".join(GRAB_RFID))
 	                # empty array
 	                # del GRAB_RFID[:]
@@ -174,7 +214,7 @@ Play sound
 def play_sound():
 	result = False
 	try :
-		file = "/home/pi/raspberry_parking/sounds/welcome.mp3"
+		file = CONFIG['AUDIO']['voice_path']+"/welcome.mp3"
 		os.system("mpg123 " + file+ " &")
 		result = True
 	except Exception as e :
@@ -188,7 +228,7 @@ Play sound rfid
 def play_sound_rfid():
 	result = False
 	try :
-		file = "/home/pi/raspberry_parking/sounds/welcome_short.mp3"
+		file = CONFIG['AUDIO']['voice_path']+"/welcome_short.mp3"
 		os.system("mpg123 " + file+ " &")
 		result = True
 	except Exception as e :
@@ -218,6 +258,18 @@ def send_card(card_id):
 
 	return None
 
+def send_qr_code(qr_code):
+	try :
+		url = CONFIG['SERVER']['ip']+'parking_system/api/gate/gate_in_qr_code.php?action=send_qr_code&loc='+\
+		CONFIG['CLIENT']['loc']+\
+		'&gate='+CONFIG['CLIENT']['gate']+"&qr_code="+qr_code
+		print(url)
+		return requests.get(url).json()
+	except Exception as e :
+		print(e)
+
+	return None
+
 def record_cctv(id_parking, ip_cctv, username_cctv, password_cctv):
 	try :
 		url = CONFIG['SERVER']['ip']+'parking_system/api/gate/camera_cctv.php?loc='+\
@@ -236,7 +288,11 @@ def record_cctv(id_parking, ip_cctv, username_cctv, password_cctv):
 
 track = 0
 while True:
+	if(track == 0):
+		show_lcd("Selamat Datang!", "TOP")
+		show_lcd("di Crown Parking", "BOTTOM")
 	if (gpio.input(PIN_IN1) == False):
+		clear_lcd()
 		print("1.) TEKAN TOMBOL TICKET")
 		if (track < 1) :
 			sticker_data = get_tiket()
@@ -247,7 +303,8 @@ while True:
 				t_play_sound.start()
 				
 				# LCD
-				show_lcd("Selamat Datang!")
+				show_lcd("Silahkan ambil tiket!", "TOP")
+				show_lcd("Silahkan masuk","BOTTOM")
 
 				# THERMAL PRINTER
 				print_thermal(
@@ -275,7 +332,8 @@ while True:
 			else :
 				# do something with error
 				pass
-	elif(len(GRAB_STATUS) > 0) :
+	elif(len(GRAB_RFID_STATUS) > 0) :
+		clear_lcd()
 		print("1.) BACA READER")
 		rfid_data = "".join(GRAB_RFID)
 		if (track < 1) :
@@ -287,6 +345,9 @@ while True:
 				
 				# card success
 				if(card_status == 1):
+					# LCD
+					show_lcd("Verifikasi berhasil!", "TOP")
+					show_lcd("Silahkan masuk","BOTTOM")
 					
 					# PLAY SOUND
 					t_play_sound = threading.Thread(target=play_sound_rfid, args=())
@@ -315,7 +376,52 @@ while True:
 
 			# clear data
 			del GRAB_RFID[:]
-			del GRAB_STATUS[:]
+			del GRAB_RFID_STATUS[:]
+	elif(len(GRAB_QRID_STATUS) > 0) :
+		clear_lcd()
+		print("1.) BACA QR READER")
+		qrid_data = "".join(GRAB_QRID)
+		if (track < 1) :
+			sticker_data = get_tiket()
+			if(sticker_data != None):
+				qrid_json = send_qr_code(qrid_data)
+				qrid_status = int(qrid_json["status"])
+				running_text = qrid_json["description"]
+				
+				# card success
+				if(qrid_status == 1):
+					# LCD
+					show_lcd("Verifikasi berhasil!", "TOP")
+					show_lcd("Silahkan masuk","BOTTOM")
+					
+					# PLAY SOUND
+					t_play_sound = threading.Thread(target=play_sound_rfid, args=())
+					t_play_sound.start()
+
+					# CAPTURE CCTV
+					t_capture = threading.Thread(
+						target=record_cctv, 
+						args=(
+							sticker_data["id_parking"],
+							sticker_data["ip_cctv"],
+							sticker_data["username_cctv"],
+							sticker_data["password_cctv"],
+						)
+					)
+					t_capture.start()
+
+					track += 1
+					print("Kartu sukses")
+				else :
+					print("Kartu tidak terdaftar / rusak.")
+					pass
+			else :
+				# do something with error
+				pass
+
+			# clear data
+			del GRAB_QRID[:]
+			del GRAB_QRID_STATUS[:]
 	else :
 		if (track > 0):
 			# waiting vld sensor
